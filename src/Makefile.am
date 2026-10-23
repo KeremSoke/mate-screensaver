@@ -219,6 +219,10 @@ mate_screensaver_SOURCES =	\
 	gs-grab.h		\
 	gs-fade.c		\
 	gs-fade.h		\
+	gs-mpris-manager.c	\
+	gs-mpris-manager.h	\
+	gs-mpris-player.c	\
+	gs-mpris-player.h	\
 	$(BUILT_SOURCES)	\
 	$(NULL)
 
