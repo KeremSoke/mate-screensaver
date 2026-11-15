@@ -189,6 +189,8 @@ dnl ---------------------------------------------------------------------------
 
 WAYLAND_CLIENT_CFLAGS=""
 WAYLAND_CLIENT_LIBS=""
+WAYLAND_SERVER_CFLAGS=""
+WAYLAND_SERVER_LIBS=""
 WAYLAND_PROTOCOLS_DATADIR=""
 WAYLAND_SCANNER=""
 LIBWLEMBED_CFLAGS=""
@@ -202,6 +204,7 @@ GTK_LAYER_SHELL_LIBS=""
 
 if test "x$enable_wayland" = "xyes"; then
   PKG_CHECK_MODULES(WAYLAND_CLIENT, [wayland-client >= 1.21.0], [have_wayland_client=yes], [have_wayland_client=no])
+  PKG_CHECK_MODULES(WAYLAND_SERVER, [wayland-server >= 1.20.0], [have_wayland_server=yes], [have_wayland_server=no])
   PKG_CHECK_MODULES(WAYLAND_PROTOCOLS, [wayland-protocols >= 1.31], [have_wayland_protocols=yes], [have_wayland_protocols=no])
   PKG_CHECK_MODULES(GDK_WAYLAND, [gdk-wayland-3.0 >= $GTK_REQUIRED_VERSION], [have_gdk_wayland=yes], [have_gdk_wayland=no])
 
@@ -376,7 +379,7 @@ EOF
   PKG_CHECK_VAR([WAYLAND_SCANNER], [wayland-scanner], [wayland_scanner], [],
                 [AC_MSG_ERROR([wayland-scanner not found])])
 
-  if test "x$have_wayland_client" = "xyes" && test "x$have_wayland_protocols" = "xyes" && test "x$have_gdk_wayland" = "xyes" && test "x$have_libwlembed" = "xyes" && test "x$have_libwlembed_gtk3" = "xyes" && test "x$have_gtk_layer_shell" = "xyes"; then
+  if test "x$have_wayland_client" = "xyes" && test "x$have_wayland_server" = "xyes" && test "x$have_wayland_protocols" = "xyes" && test "x$have_gdk_wayland" = "xyes" && test "x$have_libwlembed" = "xyes" && test "x$have_libwlembed_gtk3" = "xyes" && test "x$have_gtk_layer_shell" = "xyes"; then
     AC_DEFINE(ENABLE_WAYLAND, 1, [Build with Wayland support])
   else
     AC_MSG_ERROR([Wayland support requested but required dependencies not found])
@@ -385,6 +388,8 @@ fi
 
 AC_SUBST(WAYLAND_CLIENT_CFLAGS)
 AC_SUBST(WAYLAND_CLIENT_LIBS)
+AC_SUBST(WAYLAND_SERVER_CFLAGS)
+AC_SUBST(WAYLAND_SERVER_LIBS)
 AC_SUBST(WAYLAND_PROTOCOLS_DATADIR)
 AC_SUBST(WAYLAND_SCANNER)
 AC_SUBST(LIBWLEMBED_CFLAGS)
