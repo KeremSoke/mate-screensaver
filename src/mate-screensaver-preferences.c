@@ -1862,6 +1862,7 @@ init_capplet (void)
 		}
 		else
 		{
+			gs_job_set_wayland_compositor (compositor);
 			socket = wle_gtk_socket_new (compositor);
 			gtk_container_add (GTK_CONTAINER (preview), socket);
 			g_signal_connect (socket, "enter-notify-event",

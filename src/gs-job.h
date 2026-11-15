@@ -26,6 +26,10 @@
 
 #include <gtk/gtk.h>
 
+#ifdef ENABLE_WAYLAND
+#include <libwlembed-gtk3/libwlembed-gtk3.h>
+#endif
+
 G_BEGIN_DECLS
 
 #define GS_TYPE_JOB         (gs_job_get_type ())
@@ -64,6 +68,12 @@ void            gs_job_set_widget                (GSJob      *job,
 
 gboolean        gs_job_set_command               (GSJob          *job,
         const char     *command);
+
+#ifdef ENABLE_WAYLAND
+void            gs_job_set_wayland_compositor    (WleEmbeddedCompositor *compositor);
+void            gs_job_set_wayland_client_allowed (GPid pid,
+        gboolean    allowed);
+#endif
 
 G_END_DECLS
 

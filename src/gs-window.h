@@ -100,8 +100,6 @@ GSWindow  * gs_window_new                (GdkMonitor *monitor,
                                           gboolean   lock_enabled);
 #ifdef ENABLE_WAYLAND
 void        gs_window_set_wayland_compositor (WleEmbeddedCompositor *compositor);
-void        gs_window_set_wayland_client_allowed (GPid pid,
-                                                  gboolean allowed);
 #endif
 void        gs_window_show               (GSWindow  *window);
 void        gs_window_destroy            (GSWindow  *window);

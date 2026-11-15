@@ -46,13 +46,11 @@
 #ifdef ENABLE_WAYLAND
 #include <gdk/gdkwayland.h>
 #include <libwlembed-gtk3/libwlembed-gtk3.h>
+#include <wayland-server-core.h>
 #endif
 
 #include "gs-debug.h"
 #include "gs-job.h"
-#ifdef ENABLE_WAYLAND
-#include "gs-window.h"
-#endif
 
 #include "subprocs.h"
 
@@ -79,6 +77,59 @@ struct GSJobPrivate
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (GSJob, gs_job, G_TYPE_OBJECT)
+
+#ifdef ENABLE_WAYLAND
+static GHashTable *wayland_client_pids;
+static gboolean wayland_client_filter_installed;
+
+static bool
+wayland_client_global_filter (const struct wl_client *client,
+                              const struct wl_global *global,
+                              void                    *data)
+{
+	pid_t pid = 0;
+	(void) global;
+	(void) data;
+
+	wl_client_get_credentials ((struct wl_client *) client, &pid, NULL, NULL);
+
+	return wayland_client_pids != NULL &&
+	       g_hash_table_contains (wayland_client_pids, GINT_TO_POINTER (pid));
+}
+
+void
+gs_job_set_wayland_compositor (WleEmbeddedCompositor *compositor)
+{
+	if (compositor != NULL && !wayland_client_filter_installed)
+	{
+		wayland_client_pids = g_hash_table_new (g_direct_hash, g_direct_equal);
+		wl_display_set_global_filter (
+			wle_embedded_compositor_get_local_display (compositor),
+			wayland_client_global_filter,
+			NULL);
+		wayland_client_filter_installed = TRUE;
+	}
+}
+
+void
+gs_job_set_wayland_client_allowed (GPid     pid,
+                                   gboolean allowed)
+{
+	if (wayland_client_pids == NULL || pid <= 0)
+	{
+		return;
+	}
+
+	if (allowed)
+	{
+		g_hash_table_add (wayland_client_pids, GINT_TO_POINTER (pid));
+	}
+	else
+	{
+		g_hash_table_remove (wayland_client_pids, GINT_TO_POINTER (pid));
+	}
+}
+#endif
 
 static char *
 widget_get_id_string (GtkWidget *widget)
@@ -173,7 +224,7 @@ gs_job_died (GSJob *job)
 
 		gs_debug ("Waiting on process %d", job->priv->pid);
 #ifdef ENABLE_WAYLAND
-		gs_window_set_wayland_client_allowed (job->priv->pid, FALSE);
+		gs_job_set_wayland_client_allowed (job->priv->pid, FALSE);
 #endif
 		exit_status = wait_on_child (job->priv->pid);
 
@@ -466,7 +517,7 @@ spawn_on_widget (GtkWidget  *widget,
 	gs_debug ("spawn_on_widget: started '%s' with pid %d", command, child_pid);
 	if (embedded_wayland)
 	{
-		gs_window_set_wayland_client_allowed (child_pid, TRUE);
+		gs_job_set_wayland_client_allowed (child_pid, TRUE);
 	}
 
 	g_strfreev (argv);

@@ -144,6 +144,8 @@ X11_TEST_WATCHER_SOURCES =		\
 
 X11_TEST_WINDOW_SOURCES =		\
 	test-window.c			\
+	gs-job.c			\
+	gs-job.h			\
 	gs-window.c			\
 	gs-window.h			\
 	gs-window-private.h		\
