@@ -1141,7 +1141,9 @@ gs_manager_init (GSManager *manager)
 
 		if (global_compositor == NULL)
 		{
-			global_compositor = wle_gtk_create_embedded_compositor ("mate-screensaver", &error);
+			/* Let libwlembed choose a unique socket name so another instance
+			 * cannot prevent the unlock dialog compositor from starting. */
+			global_compositor = wle_gtk_create_embedded_compositor (NULL, &error);
 			if (global_compositor == NULL)
 			{
 				g_warning ("Failed to create embedded compositor: %s", error->message);
@@ -2034,6 +2036,13 @@ gs_manager_activate (GSManager *manager)
 #ifdef ENABLE_WAYLAND
 	if (GDK_IS_WAYLAND_DISPLAY (gdk_display_get_default ()))
 	{
+		if (manager->priv->compositor == NULL)
+		{
+			g_warning ("Refusing to lock on Wayland without an embedded compositor "
+			           "for the unlock dialog");
+			return FALSE;
+		}
+
 		if (manager->priv->lock_manager == NULL ||
 		    ! gs_session_lock_manager_lock (manager->priv->lock_manager))
 		{
