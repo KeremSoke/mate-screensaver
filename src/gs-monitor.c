@@ -65,6 +65,7 @@ struct GSMonitorPrivate {
 	GSGrab* grab;
 	guint release_grab_id;
 	gboolean session_lock_pending;
+	gboolean quit_pending;
 };
 
 #define FADE_TIMEOUT 10000
@@ -86,6 +87,12 @@ static void manager_activated_cb(GSManager* manager, GSMonitor* monitor)
 static void manager_deactivated_cb(GSManager* manager, GSMonitor* monitor)
 {
 	gs_listener_set_active (monitor->priv->listener, FALSE);
+
+	if (monitor->priv->quit_pending)
+	{
+		monitor->priv->quit_pending = FALSE;
+		mate_screensaver_quit();
+	}
 }
 
 static void manager_session_lock_confirmed_cb(GSManager* manager, GSMonitor* monitor)
@@ -240,8 +247,19 @@ static void listener_lock_cb(GSListener* listener, GSMonitor* monitor)
 
 static void listener_quit_cb(GSListener* listener, GSMonitor* monitor)
 {
-	gs_listener_set_active(monitor->priv->listener, FALSE);
-	mate_screensaver_quit();
+	if (gs_manager_get_active (monitor->priv->manager))
+	{
+		/* Quitting an active screensaver would unlock it without checking the
+		 * password. Authenticate first, then quit after deactivation. */
+		if (gs_manager_request_unlock (monitor->priv->manager))
+		{
+			monitor->priv->quit_pending = TRUE;
+		}
+	}
+	else
+	{
+		mate_screensaver_quit();
+	}
 }
 
 static void listener_cycle_cb(GSListener* listener, GSMonitor* monitor)

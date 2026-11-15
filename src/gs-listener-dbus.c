@@ -472,25 +472,6 @@ gs_listener_set_active (GSListener *listener,
 }
 
 gboolean
-gs_listener_request_deactivate (GSListener *listener)
-{
-	gboolean res = FALSE;
-
-	g_return_val_if_fail (GS_IS_LISTENER (listener), FALSE);
-
-	/* Unlike gs_listener_set_active(FALSE), this also forwards an unlock
-	 * request while activation is still pending. */
-	g_signal_emit (listener, signals [ACTIVE_CHANGED], 0, FALSE, &res);
-
-	if (res)
-	{
-		listener_set_active_internal (listener, FALSE);
-	}
-
-	return res;
-}
-
-gboolean
 gs_listener_set_session_idle (GSListener *listener,
                               gboolean    idle)
 {
@@ -581,7 +562,16 @@ listener_property_set_bool (GSListener *listener,
 	switch (prop_id)
 	{
 	case PROP_ACTIVE:
-		gs_listener_set_active (listener, value);
+		if (value)
+		{
+			gs_listener_set_active (listener, value);
+		}
+		else
+		{
+			/* Deactivation is an unlock request and must go through the
+			 * authenticated unlock dialog. */
+			g_signal_emit (listener, signals [SIMULATE_USER_ACTIVITY], 0);
+		}
 		ret = TRUE;
 		break;
 	default:
@@ -1551,7 +1541,7 @@ listener_dbus_handle_session_message (DBusConnection *connection,
 	}
 	if (dbus_message_is_method_call (message, GS_LISTENER_SERVICE, "Unlock"))
 	{
-		gs_listener_request_deactivate (listener);
+		g_signal_emit (listener, signals [SIMULATE_USER_ACTIVITY], 0);
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 	if (dbus_message_is_method_call (message, GS_LISTENER_SERVICE, "Quit"))
