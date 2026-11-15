@@ -49,6 +49,7 @@ typedef struct
 
 	void            (* activated)          (GSManager *manager);
 	void            (* deactivated)        (GSManager *manager);
+	void            (* session_lock_confirmed) (GSManager *manager);
 	void            (* auth_request_begin) (GSManager *manager);
 	void            (* auth_request_end)   (GSManager *manager);
 

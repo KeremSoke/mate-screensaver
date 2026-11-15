@@ -34,6 +34,10 @@
 #include <glib.h>
 #include <glib-object.h>
 
+#ifdef ENABLE_WAYLAND
+#include <gdk/gdkwayland.h>
+#endif
+
 #ifdef ENABLE_X11
 #include <gdk/gdkx.h>
 #endif
@@ -60,6 +64,7 @@ struct GSMonitorPrivate {
 	GSFade* fade;
 	GSGrab* grab;
 	guint release_grab_id;
+	gboolean session_lock_pending;
 };
 
 #define FADE_TIMEOUT 10000
@@ -81,6 +86,14 @@ static void manager_activated_cb(GSManager* manager, GSMonitor* monitor)
 static void manager_deactivated_cb(GSManager* manager, GSMonitor* monitor)
 {
 	gs_listener_set_active (monitor->priv->listener, FALSE);
+}
+
+static void manager_session_lock_confirmed_cb(GSManager* manager, GSMonitor* monitor)
+{
+	/* The Wayland lock request is asynchronous.  Complete the listener
+	 * transition only after ext-session-lock-v1 sends "locked". */
+	monitor->priv->session_lock_pending = FALSE;
+	gs_listener_set_active (monitor->priv->listener, TRUE);
 }
 
 static gboolean watcher_idle_cb(GSWatcher* watcher, gboolean is_idle, GSMonitor* monitor)
@@ -246,14 +259,43 @@ static gboolean listener_active_changed_cb(GSListener* listener, gboolean active
 	gboolean res;
 	gboolean ret;
 	gboolean idle_watch_enabled;
+	gboolean manager_was_active;
 
+	/* On Wayland, activation has already prepared the saver while the
+	 * compositor lock is pending.  The confirmation callback below completes
+	 * the listener transition once the lock is confirmed. */
+	manager_was_active = gs_manager_get_active (monitor->priv->manager);
+
+	if (active && manager_was_active && !monitor->priv->session_lock_pending)
+	{
+		res = TRUE;
+	}
+	else
+	{
 	res = gs_manager_set_active(monitor->priv->manager, active);
+
+#ifdef ENABLE_WAYLAND
+	if (res && active && !manager_was_active &&
+	    GDK_IS_WAYLAND_DISPLAY (gdk_display_get_default ()))
+	{
+		/* Keep the public listener state inactive until the compositor sends
+		 * ext-session-lock-v1's locked event. */
+		monitor->priv->session_lock_pending = TRUE;
+		return FALSE;
+	}
+#endif
+	}
 
 	if (! res)
 	{
 		gs_debug("Unable to set manager active: %d", active);
 		ret = FALSE;
 		goto done;
+	}
+
+	if (!active)
+	{
+		monitor->priv->session_lock_pending = FALSE;
 	}
 
 	ret = TRUE;
@@ -418,12 +460,14 @@ static void disconnect_manager_signals(GSMonitor* monitor)
 
 	g_signal_handlers_disconnect_by_func(monitor->priv->manager, manager_activated_cb, monitor);
 	g_signal_handlers_disconnect_by_func(monitor->priv->manager, manager_deactivated_cb, monitor);
+	g_signal_handlers_disconnect_by_func(monitor->priv->manager, manager_session_lock_confirmed_cb, monitor);
 }
 
 static void connect_manager_signals(GSMonitor* monitor)
 {
 	g_signal_connect(monitor->priv->manager, "activated", G_CALLBACK(manager_activated_cb), monitor);
 	g_signal_connect(monitor->priv->manager, "deactivated", G_CALLBACK(manager_deactivated_cb), monitor);
+	g_signal_connect(monitor->priv->manager, "session-lock-confirmed", G_CALLBACK(manager_session_lock_confirmed_cb), monitor);
 }
 
 static void disconnect_prefs_signals(GSMonitor* monitor)

@@ -82,6 +82,7 @@ gboolean    gs_listener_acquire                 (GSListener *listener,
         GError    **error);
 gboolean    gs_listener_set_active              (GSListener *listener,
         gboolean    active);
+gboolean    gs_listener_request_deactivate      (GSListener *listener);
 gboolean    gs_listener_set_session_idle        (GSListener *listener,
         gboolean    idle);
 void        gs_listener_set_activation_enabled  (GSListener *listener,

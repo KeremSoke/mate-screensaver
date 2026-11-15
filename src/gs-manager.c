@@ -105,6 +105,7 @@ enum
 {
     ACTIVATED,
     DEACTIVATED,
+    SESSION_LOCK_CONFIRMED,
     AUTH_REQUEST_BEGIN,
     AUTH_REQUEST_END,
     LAST_SIGNAL
@@ -156,6 +157,13 @@ manager_session_lock_locked_cb (GSSessionLockManager *lock_manager,
                                 GSManager            *manager)
 {
 	gs_debug ("Session lock confirmed by compositor");
+
+	/* The public active state is published only after the compositor has
+	 * accepted the session lock. */
+	if (manager->priv->active)
+	{
+		g_signal_emit (manager, signals [SESSION_LOCK_CONFIRMED], 0);
+	}
 }
 
 static void
@@ -987,6 +995,16 @@ gs_manager_class_init (GSManagerClass *klass)
 	                  G_TYPE_FROM_CLASS (object_class),
 	                  G_SIGNAL_RUN_LAST,
 	                  G_STRUCT_OFFSET (GSManagerClass, deactivated),
+	                  NULL,
+	                  NULL,
+	                  g_cclosure_marshal_VOID__VOID,
+	                  G_TYPE_NONE,
+	                  0);
+	signals [SESSION_LOCK_CONFIRMED] =
+	    g_signal_new ("session-lock-confirmed",
+	                  G_TYPE_FROM_CLASS (object_class),
+	                  G_SIGNAL_RUN_LAST,
+	                  G_STRUCT_OFFSET (GSManagerClass, session_lock_confirmed),
 	                  NULL,
 	                  NULL,
 	                  g_cclosure_marshal_VOID__VOID,
