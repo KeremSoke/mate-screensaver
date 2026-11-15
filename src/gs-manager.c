@@ -106,6 +106,7 @@ enum
     ACTIVATED,
     DEACTIVATED,
     SESSION_LOCK_CONFIRMED,
+    SESSION_LOCK_FINISHED,
     AUTH_REQUEST_BEGIN,
     AUTH_REQUEST_END,
     LAST_SIGNAL
@@ -147,7 +148,11 @@ session_lock_finished_idle (gpointer data)
 
 	manager->priv->session_lock_finished_idle_id = 0;
 
-	gs_manager_deactivate (manager);
+	if (manager->priv->active)
+	{
+		gs_manager_deactivate (manager);
+		g_signal_emit (manager, signals [SESSION_LOCK_FINISHED], 0);
+	}
 
 	return FALSE;
 }
@@ -1005,6 +1010,16 @@ gs_manager_class_init (GSManagerClass *klass)
 	                  G_TYPE_FROM_CLASS (object_class),
 	                  G_SIGNAL_RUN_LAST,
 	                  G_STRUCT_OFFSET (GSManagerClass, session_lock_confirmed),
+	                  NULL,
+	                  NULL,
+	                  g_cclosure_marshal_VOID__VOID,
+	                  G_TYPE_NONE,
+	                  0);
+	signals [SESSION_LOCK_FINISHED] =
+	    g_signal_new ("session-lock-finished",
+	                  G_TYPE_FROM_CLASS (object_class),
+	                  G_SIGNAL_RUN_LAST,
+	                  G_STRUCT_OFFSET (GSManagerClass, session_lock_finished),
 	                  NULL,
 	                  NULL,
 	                  g_cclosure_marshal_VOID__VOID,

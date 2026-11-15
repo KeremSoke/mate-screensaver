@@ -103,6 +103,18 @@ static void manager_session_lock_confirmed_cb(GSManager* manager, GSMonitor* mon
 	gs_listener_set_active (monitor->priv->listener, TRUE);
 }
 
+static void manager_session_lock_finished_cb(GSManager* manager, GSMonitor* monitor)
+{
+	/* A refused lock leaves the compositor's idle notification in its fired
+	 * state. Recreate it so another idle transition can trigger a retry. */
+	monitor->priv->session_lock_pending = FALSE;
+	if (gs_watcher_get_enabled (monitor->priv->watcher))
+	{
+		gs_watcher_set_active (monitor->priv->watcher, FALSE);
+		gs_watcher_set_active (monitor->priv->watcher, TRUE);
+	}
+}
+
 static gboolean watcher_idle_cb(GSWatcher* watcher, gboolean is_idle, GSMonitor* monitor)
 {
 	gboolean res;
@@ -479,6 +491,7 @@ static void disconnect_manager_signals(GSMonitor* monitor)
 	g_signal_handlers_disconnect_by_func(monitor->priv->manager, manager_activated_cb, monitor);
 	g_signal_handlers_disconnect_by_func(monitor->priv->manager, manager_deactivated_cb, monitor);
 	g_signal_handlers_disconnect_by_func(monitor->priv->manager, manager_session_lock_confirmed_cb, monitor);
+	g_signal_handlers_disconnect_by_func(monitor->priv->manager, manager_session_lock_finished_cb, monitor);
 }
 
 static void connect_manager_signals(GSMonitor* monitor)
@@ -486,6 +499,7 @@ static void connect_manager_signals(GSMonitor* monitor)
 	g_signal_connect(monitor->priv->manager, "activated", G_CALLBACK(manager_activated_cb), monitor);
 	g_signal_connect(monitor->priv->manager, "deactivated", G_CALLBACK(manager_deactivated_cb), monitor);
 	g_signal_connect(monitor->priv->manager, "session-lock-confirmed", G_CALLBACK(manager_session_lock_confirmed_cb), monitor);
+	g_signal_connect(monitor->priv->manager, "session-lock-finished", G_CALLBACK(manager_session_lock_finished_cb), monitor);
 }
 
 static void disconnect_prefs_signals(GSMonitor* monitor)
