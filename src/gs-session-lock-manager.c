@@ -109,9 +109,25 @@ on_lock_finished (void                        *data,
 	gs_debug ("Session lock finished by compositor");
 
 	/* The compositor has already destroyed all lock surfaces on its side,
-	 * so we must NOT send a destroy request for them: just drop our
-	 * references. */
+	 * so we must NOT send protocol destroy requests for them.  Destroy the
+	 * client-side proxies locally before dropping our references. */
 	manager->finished = TRUE;
+	{
+		GHashTableIter iter;
+		gpointer       value;
+
+		g_hash_table_iter_init (&iter, manager->lock_surfaces);
+		while (g_hash_table_iter_next (&iter, NULL, &value))
+		{
+			GSLockSurface *lock_surface = value;
+
+			if (lock_surface->surface != NULL)
+			{
+				wl_proxy_destroy ((struct wl_proxy *) lock_surface->surface);
+				lock_surface->surface = NULL;
+			}
+		}
+	}
 	g_hash_table_remove_all (manager->lock_surfaces);
 
 	/* Protocol: use unlock_and_destroy if the locked event was received,
