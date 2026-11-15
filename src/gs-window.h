@@ -27,6 +27,10 @@
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
 
+#ifdef ENABLE_WAYLAND
+#include <libwlembed-gtk3/libwlembed-gtk3.h>
+#endif
+
 G_BEGIN_DECLS
 
 #define GS_TYPE_WINDOW         (gs_window_get_type ())
@@ -94,6 +98,11 @@ void        gs_window_cancel_unlock_request (GSWindow  *window);
 
 GSWindow  * gs_window_new                (GdkMonitor *monitor,
                                           gboolean   lock_enabled);
+#ifdef ENABLE_WAYLAND
+void        gs_window_set_wayland_compositor (WleEmbeddedCompositor *compositor);
+void        gs_window_set_wayland_client_allowed (GPid pid,
+                                                  gboolean allowed);
+#endif
 void        gs_window_show               (GSWindow  *window);
 void        gs_window_destroy            (GSWindow  *window);
 GdkWindow * gs_window_get_gdk_window     (GSWindow  *window);

@@ -50,6 +50,9 @@
 
 #include "gs-debug.h"
 #include "gs-job.h"
+#ifdef ENABLE_WAYLAND
+#include "gs-window.h"
+#endif
 
 #include "subprocs.h"
 
@@ -169,6 +172,9 @@ gs_job_died (GSJob *job)
 		int exit_status;
 
 		gs_debug ("Waiting on process %d", job->priv->pid);
+#ifdef ENABLE_WAYLAND
+		gs_window_set_wayland_client_allowed (job->priv->pid, FALSE);
+#endif
 		exit_status = wait_on_child (job->priv->pid);
 
 		job->priv->status = GS_JOB_DEAD;
@@ -387,6 +393,7 @@ spawn_on_widget (GtkWidget  *widget,
 	int         child_pid;
 	int         id;
 	int         i;
+	gboolean    embedded_wayland = FALSE;
 
 	if (command == NULL)
 	{
@@ -410,6 +417,7 @@ spawn_on_widget (GtkWidget  *widget,
 		WleEmbeddedCompositor *compositor;
 
 		gs_debug ("spawn_on_widget: using wle_embedded_compositor_spawn_with_pipes for '%s'", command);
+		embedded_wayland = TRUE;
 		compositor = wle_gtk_socket_get_embedded_compositor (WLE_GTK_SOCKET (widget));
 		result = wle_embedded_compositor_spawn_with_pipes (compositor,
 		                                                   NULL,
@@ -456,6 +464,10 @@ spawn_on_widget (GtkWidget  *widget,
 	}
 
 	gs_debug ("spawn_on_widget: started '%s' with pid %d", command, child_pid);
+	if (embedded_wayland)
+	{
+		gs_window_set_wayland_client_allowed (child_pid, TRUE);
+	}
 
 	g_strfreev (argv);
 

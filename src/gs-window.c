@@ -43,6 +43,7 @@
 #ifdef ENABLE_WAYLAND
 #include <gdk/gdkwayland.h>
 #include <wayland-client.h>
+#include <wayland-server-core.h>
 #include <libwlembed-gtk3/libwlembed-gtk3.h>
 #endif
 
@@ -56,6 +57,59 @@
 /* The embedded compositor used to host saver themes and the unlock dialog
  * on Wayland. Set by GSManager before windows are created. */
 WleEmbeddedCompositor *gs_wayland_compositor = NULL;
+
+static GHashTable *wayland_client_pids;
+static gboolean wayland_client_filter_installed;
+
+static bool
+wayland_client_global_filter (const struct wl_client *client,
+                              const struct wl_global *global,
+                              void                    *data)
+{
+	pid_t pid = 0;
+	(void) global;
+	(void) data;
+
+	wl_client_get_credentials ((struct wl_client *) client, &pid, NULL, NULL);
+
+	return wayland_client_pids != NULL &&
+	       g_hash_table_contains (wayland_client_pids, GINT_TO_POINTER (pid));
+}
+
+void
+gs_window_set_wayland_compositor (WleEmbeddedCompositor *compositor)
+{
+	gs_wayland_compositor = compositor;
+
+	if (compositor != NULL && !wayland_client_filter_installed)
+	{
+		struct wl_display *display;
+
+		wayland_client_pids = g_hash_table_new (g_direct_hash, g_direct_equal);
+		display = wle_embedded_compositor_get_local_display (compositor);
+		wl_display_set_global_filter (display, wayland_client_global_filter, NULL);
+		wayland_client_filter_installed = TRUE;
+	}
+}
+
+void
+gs_window_set_wayland_client_allowed (GPid     pid,
+                                      gboolean allowed)
+{
+	if (wayland_client_pids == NULL || pid <= 0)
+	{
+		return;
+	}
+
+	if (allowed)
+	{
+		g_hash_table_add (wayland_client_pids, GINT_TO_POINTER (pid));
+	}
+	else
+	{
+		g_hash_table_remove (wayland_client_pids, GINT_TO_POINTER (pid));
+	}
+}
 #endif
 
 enum
@@ -1744,6 +1798,7 @@ reap_dialog_child (GSWindow *window)
 		waitpid (window->priv->lock_pid, &status, 0);
 	}
 
+	gs_window_set_wayland_client_allowed (window->priv->lock_pid, FALSE);
 	g_spawn_close_pid (window->priv->lock_pid);
 	window->priv->lock_pid = 0;
 }
@@ -1756,6 +1811,7 @@ dialog_child_watch_cb (GPid     pid,
 	GSWindow *window = GS_WINDOW (data);
 
 	/* GLib has already reaped the child in this callback. */
+	gs_window_set_wayland_client_allowed (pid, FALSE);
 	if (window->priv->lock_pid == pid)
 	{
 		window->priv->lock_pid = 0;
@@ -1773,6 +1829,7 @@ wayland_spawn_on_window (GSWindow     *window,
                          gint         *watch_id)
 {
 	gboolean               result;
+	gboolean               embedded_wayland = FALSE;
 	GError                *error;
 	char                 **argv;
 	char                 **envp;
@@ -1804,6 +1861,7 @@ wayland_spawn_on_window (GSWindow     *window,
 	if (embedding_token != NULL && compositor != NULL &&
 	    GDK_IS_WAYLAND_DISPLAY (gdk_display_get_default ()))
 	{
+		embedded_wayland = TRUE;
 		/* Spawn the child against the embedded compositor so its
 		 * windows can be embedded into our lock surface. The real
 		 * display stays reachable via WAYLAND_PARENT_DISPLAY. */
@@ -1847,6 +1905,11 @@ wayland_spawn_on_window (GSWindow     *window,
 		g_strfreev (argv);
 		g_strfreev (envp);
 		return FALSE;
+	}
+
+	if (embedded_wayland)
+	{
+		gs_window_set_wayland_client_allowed (*child_pid, TRUE);
 	}
 
 	window->priv->lock_child_watch_id = g_child_watch_add (*child_pid,

@@ -135,7 +135,6 @@ static guint         signals [LAST_SIGNAL] = { 0, };
 
 #ifdef ENABLE_WAYLAND
 static WleEmbeddedCompositor *global_compositor = NULL;
-extern WleEmbeddedCompositor *gs_wayland_compositor;
 #endif
 
 G_DEFINE_TYPE_WITH_PRIVATE (GSManager, gs_manager, G_TYPE_OBJECT)
@@ -1157,7 +1156,7 @@ gs_manager_init (GSManager *manager)
 			}
 		}
 		manager->priv->compositor = global_compositor;
-		gs_wayland_compositor = global_compositor;
+		gs_window_set_wayland_compositor (global_compositor);
 
 		manager->priv->lock_manager = gs_session_lock_manager_new ();
 		if (manager->priv->lock_manager != NULL)
