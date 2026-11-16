@@ -108,6 +108,7 @@ void        gs_manager_cancel_unlock_request (GSManager *manager);
 #ifdef ENABLE_WAYLAND
 #include <libwlembed-gtk3/libwlembed-gtk3.h>
 WleEmbeddedCompositor * gs_manager_get_compositor (GSManager *manager);
+void                    gs_manager_shutdown_wayland_compositor (void);
 #endif
 
 G_END_DECLS

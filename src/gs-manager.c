@@ -1985,6 +1985,15 @@ gs_manager_new (void)
 	return GS_MANAGER (manager);
 }
 
+#ifdef ENABLE_WAYLAND
+void
+gs_manager_shutdown_wayland_compositor (void)
+{
+	gs_window_set_wayland_compositor (NULL);
+	g_clear_object (&global_compositor);
+}
+#endif
+
 static void
 show_windows (GSList *windows)
 {

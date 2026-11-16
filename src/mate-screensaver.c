@@ -23,6 +23,7 @@
  */
 
 #include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -37,6 +38,9 @@
 #include "mate-screensaver.h"
 #include "gs-monitor.h"
 #include "gs-debug.h"
+#ifdef ENABLE_WAYLAND
+#include "gs-manager.h"
+#endif
 
 void mate_screensaver_quit(void)
 {
@@ -113,12 +117,19 @@ int main(int argc, char **argv)
 			g_warning("Unable to start screensaver");
 		}
 
+		g_object_unref(monitor);
+#ifdef ENABLE_WAYLAND
+		gs_manager_shutdown_wayland_compositor();
+#endif
 		exit(1);
 	}
 
 	gtk_main();
 
 	g_object_unref(monitor);
+#ifdef ENABLE_WAYLAND
+	gs_manager_shutdown_wayland_compositor();
+#endif
 
 	gs_debug("mate-screensaver finished");
 
