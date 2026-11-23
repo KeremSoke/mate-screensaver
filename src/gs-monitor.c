@@ -105,14 +105,11 @@ static void manager_session_lock_confirmed_cb(GSManager* manager, GSMonitor* mon
 
 static void manager_session_lock_finished_cb(GSManager* manager, GSMonitor* monitor)
 {
-	/* A refused lock leaves the compositor's idle notification in its fired
-	 * state. Recreate it so another idle transition can trigger a retry. */
+	/* A refused lock leaves the idle notification active. Keep it so its
+	 * resumed event can reset the idle state and a later idled event can retry
+	 * the lock. Recreating it here could immediately report the still-idle
+	 * seat again and cause a tight retry loop. */
 	monitor->priv->session_lock_pending = FALSE;
-	if (gs_watcher_get_enabled (monitor->priv->watcher))
-	{
-		gs_watcher_set_active (monitor->priv->watcher, FALSE);
-		gs_watcher_set_active (monitor->priv->watcher, TRUE);
-	}
 }
 
 static gboolean watcher_idle_cb(GSWatcher* watcher, gboolean is_idle, GSMonitor* monitor)
