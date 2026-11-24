@@ -322,7 +322,22 @@ gs_session_lock_manager_finalize (GObject *object)
 
 	if (manager->wl_lock != NULL)
 	{
-		gs_session_lock_manager_unlock (manager);
+		if (manager->locked)
+		{
+			/* Never unlock from teardown, only a successful
+			 * authentication may do that. unlock_and_destroy here would
+			 * unlock without a password, and destroy is a protocol error
+			 * once "locked" was received. When the process exits the 
+			 * compositor keeps the session locked, as it does when the locker crashes. */
+			g_warning ("Session lock manager finalized while the session is "
+			           "locked; leaving the session locked");
+			manager->wl_lock = NULL;
+		}
+		else
+		{
+			/* A request the compositor has not confirmed -> cancel it */
+			gs_session_lock_manager_unlock (manager);
+		}
 	}
 
 	if (manager->lock_surfaces != NULL)
