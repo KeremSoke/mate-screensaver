@@ -203,7 +203,9 @@ widget_get_id_string (GtkWidget *widget)
 		if (WLE_IS_GTK_SOCKET (widget))
 		{
 			id = g_strdup (wle_gtk_socket_get_embedding_token (WLE_GTK_SOCKET (widget)));
-			gs_debug ("widget_get_id_string: WleGtkSocket, embedding token '%s'", id);
+			/* Never log the token: it is a credential for embedding. */
+			gs_debug ("widget_get_id_string: WleGtkSocket, embedding token %s",
+			          id != NULL ? "set" : "missing");
 		}
 		else
 		{
