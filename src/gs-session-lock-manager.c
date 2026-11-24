@@ -108,9 +108,9 @@ on_lock_finished (void                        *data,
 
 	gs_debug ("Session lock finished by compositor");
 
-	/* The compositor has already destroyed all lock surfaces on its side,
-	 * so we must NOT send protocol destroy requests for them.  Destroy the
-	 * client-side proxies locally before dropping our references. */
+	/* Lock surfaces are client-owned objects: "finished" does not destroy
+	 * them and the compositor keeps their configure state. Send the
+	 * destroy request so the wl_surfaces lose the lock-surface role */
 	manager->finished = TRUE;
 	{
 		GHashTableIter iter;
@@ -123,7 +123,7 @@ on_lock_finished (void                        *data,
 
 			if (lock_surface->surface != NULL)
 			{
-				wl_proxy_destroy ((struct wl_proxy *) lock_surface->surface);
+				ext_session_lock_surface_v1_destroy (lock_surface->surface);
 				lock_surface->surface = NULL;
 			}
 		}
