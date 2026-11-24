@@ -243,6 +243,15 @@ on_window_realize (GtkWidget            *widget,
 		wl_output = gdk_wayland_monitor_get_wl_output (monitor);
 	}
 
+	/* get_lock_surface's output argument should not nullable. Passing NULL
+	 * makes libwayland-client refuse to marshal the request and puts the
+	 * connection into an error state, which is fatal for the locker. */
+	if (wl_output == NULL)
+	{
+		gs_debug ("No wl_output for this window's monitor, not creating a lock surface");
+		return;
+	}
+
 	/* Never create two lock surfaces for the same output. */
 	if (has_surface_for_output (manager, wl_output))
 	{
