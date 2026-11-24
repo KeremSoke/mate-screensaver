@@ -149,8 +149,15 @@ session_lock_finished_idle (gpointer data)
 
 	if (manager->priv->active)
 	{
-		gs_manager_deactivate (manager);
+		/* Let the monitor deactivate after a confirmed lock that has to
+		 * go through the listener. Deactivating here first would leave the listener
+		 * active and make it ignore every later lock request. */
 		g_signal_emit (manager, signals [SESSION_LOCK_FINISHED], 0);
+
+		if (manager->priv->active)
+		{
+			gs_manager_deactivate (manager);
+		}
 	}
 
 	return FALSE;
